@@ -14,9 +14,12 @@ namespace Net.DDP.Client
         private int _uniqueId;
         private ResultQueue _queueHandler;
 
+        public event SocketErrorEventHandler SocketError;
+
         public DDPClient(IDataSubscriber subscriber)
         {
             this._connector = new DDPConnector(this);
+            this._connector.SocketError += new SocketErrorEventHandler(_connector_Error);
             this._queueHandler = new ResultQueue(subscriber);
             _uniqueId = 1;
         }
@@ -26,34 +29,48 @@ namespace Net.DDP.Client
             _queueHandler.AddItem(jsonItem);
         }
 
-        public void Connect(string url)
+        /// <summary>
+        /// Creates a new connection.
+        /// Returns true if a connection was successfully opened to the url
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        public bool Connect(string url)
         {
-            _connector.Connect(url);
+            return _connector.Connect(url);
         }
 
-        public void Call(string methodName, params object[] args)
+        public int Call(string methodName, params object[] args)
         {
-            _connector.Send(JsonConvert.SerializeObject(new 
-                {
-                    msg = "method",
-                    method = methodName,
-                    @params = args,
-                    id = this.NextId().ToString()
-                }
-            ));
+            int id = this.NextId();
+            string json = JsonConvert.SerializeObject(new
+            {
+                msg = "method",
+                method = methodName,
+                @params = args,
+                id = id.ToString()
+            });
+            _connector.Send(json);
+            return id;
+        }
+
+        public void Close()
+        {
+            _connector.Close();
         }
 
         public int Subscribe(string subscribeTo, params object[] args)
         {
-            _connector.Send(JsonConvert.SerializeObject(new 
-                {
-                    msg = "sub",
-                    name = subscribeTo,
-                    @params = args,
-                    id = this.NextId().ToString()
-                }
-            ));
-            return this.GetCurrentRequestId();
+            int id = this.NextId();
+            string json = JsonConvert.SerializeObject(new
+            {
+                msg = "sub",
+                name = subscribeTo,
+                @params = args,
+                id = id.ToString()
+            });
+            _connector.Send(json);
+            return id;
         }
 
         public WebSocketState State
@@ -72,5 +89,23 @@ namespace Net.DDP.Client
             return _uniqueId;
         }
 
-    }
+        /// <summary>
+        /// Propogate socket error
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void _connector_Error(object sender, SocketErrorEventArgs e)
+        {
+            OnError(e);
+        }
+
+        protected virtual void OnError(SocketErrorEventArgs e)
+        {
+            SocketErrorEventHandler temp = SocketError;
+            if (temp != null)
+            {
+                SocketError(this, e);
+            }
+        }
+    }    
 }
