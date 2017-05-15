@@ -8,8 +8,8 @@ namespace Net.DDP.Client
     public interface IClient
     {
         void AddItem(string jsonItem);
-        void Connect(string url, bool useSsl = false);
-        void Call(string methodName, object[] args);
+        bool Connect(string url, bool useSsl = false);
+        int Call(string methodName, object[] args);
         int Subscribe(string methodName, object[] args);
         int GetCurrentRequestId();
     }

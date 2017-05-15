@@ -42,7 +42,7 @@ namespace Net.DDP.Client.Test
                 else if (data.type == "method")
                     Console.WriteLine(data.result);
             }
-            catch(Exception ex)
+            catch(Exception)
             {
                 throw;
             }
